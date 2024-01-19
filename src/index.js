@@ -201,7 +201,8 @@ const scat = () => gcats.push({ kind: "sep" })
 cat("event", "Events", "#17c40e", block => {
   function event(desc, id) {
     block(id == "" ? "onload" : "event_" + id, false, false, false, "code", k => k.field(desc), (b, f, i, n) => `${id == "" ? "do" : `function events.${id}()`}
-${i}end`)
+${i}
+end`)
   }
   event("when avatar is selected", "")
   event("when player is loaded", "entity_init")
@@ -217,7 +218,7 @@ cat("string", "Text", "#2ad4c8", block => {
   block("print", false, "code", "code", false, b => {
     b.field("print")
     b.input("VALUE", "String")
-  }, (b, f) => `print(${f("VALUE")})`)
+  }, (b, f) => `print(${f("VALUE") || "error('Hole!')"})`)
 })
 let typecols = {}
 scat()
@@ -251,7 +252,7 @@ cat("model", "Models", "#b214a2", (block, foreign) => {
     k.field("is")
     k.input("VALUE", "VanillaPart", "ModelPart")
     k.field("visible?")
-  }, (b, f, i, n) => `${f("VALUE")}:isVisible()\n`)
+  }, (b, f, i, n) => `${f("VALUE") || "error('Hole!')"}:isVisible()\n`)
   block("visibility=", false, "code", "code", false, k => {
     k.field("set visibility of")
     k.input("PART", "VanillaPart", "ModelPart")
@@ -411,7 +412,8 @@ toolbox.contents.splice(1, 0, ...gcats)
 
 excat("control", toolbox.contents[0], (block) => {
   block("ignore", false, "code", "code", false, k => k.input("VALUE", "Ignorable"), (b, f, i, n) => f("VALUE"))
-  block("do", false, "code", "code", "code", k => {}, (b, f, i, n) => `do\n  ${i}end\n${n}`)
+  block("do", false, "code", "code", "code", k => {}, (b, f, i, n) => `do\n  ${i}
+end\n${n}`)
   block("jump", false, "code", false, false, k => {
     k.field("jump")
   }, (b, f, i, n) => "")
@@ -426,7 +428,7 @@ excat("control", toolbox.contents[0], (block) => {
       args.push(luaGenerator.valueToCode(b, "VALUE", 0) || "error('Hole!')")
       nextArg = nextArg.getNextBlock()
     }
-    return `(${f("VALUE")})(${args})`
+    return `(${f("VALUE") || "error('Hole!')"})(${args})`
   })
   block("fninvoke_expr", true, null, ["arg"], false, k => {
     k.field("call")
@@ -438,7 +440,7 @@ excat("control", toolbox.contents[0], (block) => {
       args.push(luaGenerator.valueToCode(b, "VALUE", 0) || "error('Hole!')")
       nextArg = nextArg.getNextBlock()
     }
-    return `(${f("VALUE")})(${args})`
+    return `(${f("VALUE") || "error('Hole!')"})(${args})`
   })
   block("become", false, "code", ["arg"], false, k => {
     k.field("continue running")
@@ -450,7 +452,7 @@ excat("control", toolbox.contents[0], (block) => {
       args.push(luaGenerator.valueToCode(b, "VALUE", 0) || "error('Hole!')")
       nextArg = nextArg.getNextBlock()
     }
-    return `(${f("VALUE")})(${args})`
+    return `(${f("VALUE") || "error('Hole!')"})(${args})`
   })
   block("capturecont", false, "code", "code", "code", k => {
     k.field("capture continuation")
@@ -458,6 +460,23 @@ excat("control", toolbox.contents[0], (block) => {
   block("getcont", true, "Function", false, false, k => {
     k.field("captured continuation")
   }, () => "(__figblk_ccont)")
+  block("switch", false, "code", "code", "switch", k => {
+    k.field("match")
+    k.input("VALUE")
+  }, (b, f, i, n) => `local __figblk_switch = ${f("VALUE") || "error('Hole!')"}
+do
+${i.replace(/^(\s+)else/, "$1").trimEnd().replace(/(?<=.)$/, "\n  end")}
+end`)
+  block("switchcase", false, "switch", "switch", "code", k => {
+    k.field("if it equals")
+    k.input("VALUE")
+  }, (b, f, i, n) => `elseif __figblk_switch == ${f("VALUE") || "error('Hole!')"} then
+${i}
+${n}`)
+  block("switchelse", false, "switch", false, "code", k => {
+    k.field("otherwise")
+  }, (b, f, i) => `else
+${i}`)
 })
 nexcat("advanced", block => {
   block("tf", true, null, null, false, k => {
