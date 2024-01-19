@@ -337,7 +337,7 @@ cat("entities", "Entities", "#19966e", block => {
     // generate similar to if
     return `if player:isLoaded() then
   ${b}
-${end}${n}
+${end}${n}`
   })
 })
 scat()
