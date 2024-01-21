@@ -21,13 +21,14 @@ console.log(Blockly.Blocks)
 addBlocks(Blockly.Blocks)
 
 const theme = Blockly.Themes.Classic
-function paint(style, color) {
+function paint(style, color, hat) {
   theme.setCategoryStyle(style + "_category", {
     colour: color
   })
   // @ts-expect-error
   theme.setBlockStyle(style, {
-    colourPrimary: color
+    colourPrimary: color,
+    hat
   })
 }
 paint("control",  "#038cfc")
@@ -132,7 +133,7 @@ function cat(cid, name, color, define) {
     contents: [],
   })
   gcats.push(cat)
-  paint(cid, color)
+  paint(cid, color.replace(/!hat$/, ""), color.endsWith("!hat"))
   excat(cid, cat, define)
 }
 /**
