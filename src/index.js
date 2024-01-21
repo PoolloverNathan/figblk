@@ -199,10 +199,10 @@ function nexcat(cid, define) {
 }
 const scat = () => gcats.push({ kind: "sep" })
 
-cat("event", "Events", "#17c40e", block => {
+cat("event", "Events", "#17c40e!hat", block => {
   function event(desc, id) {
-    block(id == "" ? "onload" : "event_" + id, false, false, false, "code", k => k.field(desc), (b, f, i, n) => `${id == "" ? "do" : `function events.${id}()`}
-${i}
+    block(id == "" ? "onload" : "event_" + id, false, false, "code", false, k => k.field(desc), (b, f, i, n) => `${id == "" ? "do" : `function events.${id}()`}
+${n.trimEnd().replace(/^/gm, "  ")}
 end`)
   }
   event("when avatar is selected", "")
