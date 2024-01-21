@@ -117,6 +117,28 @@ class BlockBuilder {
 }
 
 let gcats = []
+const IMPLY_ENTITY = Symbol("IMPLY_ENTITY")
+const IMPLY_HOST   = Symbol("IMPLY_HOST")
+
+/** @typedef {typeof IMPLY_ENTITY | typeof IMPLY_HOST} IMPLIED */
+/** @type {Record<string, Record<IMPLIED, boolean | undefined>>} */
+let blocks_imply = {}
+
+/** @type {Map<string, Set<string>>} */
+let implementations = new Map()
+/** @param {string} iface @param {string} type */
+function implfor(iface, type) {
+  let set = implementations.get(iface)
+  if (!set) {
+    set = new Set()
+    implementations.set(iface, set)
+  }
+  set.add(type)
+}
+/** @param {string} iface @returns {Iterable<string>} */
+function impls(iface) {
+  return implementations.get(iface) ?? []
+}
 
 /**
  * @param {string} cid
@@ -143,6 +165,7 @@ function cat(cid, name, color, define) {
  * @prop {Record<string, unknown>} [fields]
  * @prop {Record<string, Omit<ToolboxBlock, "kind"> extends infer K ? { block: K } | { shadow: K } : never>} [inputs]
 */
+let forSetBlock = {}
 /**
  * @param {string} cid
  * @param {{ kind: "category", contents: {}[] }} cat
@@ -159,7 +182,7 @@ function excat(cid, cat, define) {
    * @param {(b: Blockly.Block, f: (f: any) => string, i: string, n: string) => string} codegen
    * @param {(m: () => ToolboxBlock) => Iterable<ToolboxBlock>} [tbgen]
    */
-  function block(bid, isOut, type, nextType, cType, build, codegen = (b, f, i, n) => `error("Code generation for '${bid}' not implemented")\n${n}`, tbgen = m => [m()]) {
+  function block(bid, isOut, type, nextType, cType, build, codegen = (b, f, i, n) => `error("Code generation for '${bid}' not implemented")\n${n}`, tbgen = m => [m()], /** @type {IMPLIED[]} */ imply = []) {
     cat.contents.push(...tbgen(() => ({ kind: "block", type: bid })))
     Blockly.Blocks[bid] = {
       /**
@@ -185,6 +208,14 @@ function excat(cid, cat, define) {
           , code = codegen(b, v2c, body, next)
       return isOut ? [code, 0] : code
     }
+    if (codegen.length >= 5) {
+      forSetBlock[bid] = (b, v) => { 
+        const v2c  = f => luaGenerator.valueToCode(b, f, 0)
+            , body = luaGenerator.statementToCode(b, "BODY")
+            , next = isOut ? "" : /** @type {string} */ (luaGenerator.blockToCode(b.nextConnection?.targetBlock() ?? null))
+        return codegen(b, v2c, body, next, () => v)
+      }
+    }
   }
   /**
    * @param {string} name
@@ -209,17 +240,26 @@ end`)
   event("when player is loaded", "entity_init")
 })
 // toolbox defs go here
-cat("string", "Text", "#2ad4c8", block => {
+cat("string", "Text", "#2ad4c8", (block, foreign) => {
   block("_String", true, "String", false, false, b => b.text("VALUE"), (b, f) => JSON.stringify(b.getFieldValue("VALUE") || ""))
+  block("print", false, "code", "code", false, b => {
+    b.field("print")
+    b.input("VALUE", "String")
+  }, (b, f) => `print(${f("VALUE") || "error('Hole!')"})`)
   block("concat", true,  "String", false, false, b => {
     b.input("A", "String")
     b.field("followed by")
     b.input("B", "String")
   }, (b, f) => `(${f("A")} .. ${f("B")})`)
-  block("print", false, "code", "code", false, b => {
-    b.field("print")
-    b.input("VALUE", "String")
-  }, (b, f) => `print(${f("VALUE") || "error('Hole!')"})`)
+  foreign("size")
+  block("substr", true, "String", false, false, k => {
+    k.field("letters")
+    k.input("MIN", "Number")
+    k.field("to")
+    k.input("MAX", "Number")
+    k.field("of")
+    k.input("VALUE", "String")
+  }, (b, f, i, n) => `string.sub(${f("VALUE") || ""}, ${f("MIN") || ""}, ${f("VALUE") || ""})`)
 })
 let typecols = {}
 scat()
@@ -249,17 +289,17 @@ ${end}${n}`
 })
 cat("model", "Models", "#b214a2", (block, foreign) => {
   foreign("set")
-  block("visibility", true, ["<", "Boolean"], false, false, k => {
+  block("visibility", true, ["Variable", "Boolean"], false, false, k => {
     k.field("is")
     k.input("VALUE", "VanillaPart", "ModelPart")
     k.field("visible?")
-  }, (b, f, i, n) => `${f("VALUE") || "error('Hole!')"}:isVisible()\n`)
-  block("visibility=", false, "code", "code", false, k => {
-    k.field("set visibility of")
-    k.input("PART", "VanillaPart", "ModelPart")
-    k.field("to")
-    k.input("VALUE", "Boolean")
-  }, (b, f, i, n) => `${f("PART")}:setVisible(${"VALUE"})\n`)
+  }, (b, f, i, n, s) => `${f("VALUE") || "error('Hole!')"}:${s ? `setVisible(${s()})` : "isVisible()"}\n`)
+  // block("visibility=", false, "code", "code", false, k => {
+  //   k.field("set visibility of")
+  //   k.input("PART", "VanillaPart", "ModelPart")
+  //   k.field("to")
+  //   k.input("VALUE", "Boolean")
+  // }, (b, f, i, n) => `${f("PART")}:setVisible(${"VALUE"})\n`)
 })
 cat("vanilla_model", "Vanilla Model", "#a18d63", (block, foreign) => {
   foreign("set")
@@ -379,23 +419,23 @@ cat("vars", "Variables", "#ff9d00", (block, foreign) => {
   // }, (b, f, i, n) => {
   //   return ""
   // })
-  // block("var", true, [], false, false, k => {
-  //   k.field("")
-  // }, (b, f, i, n) => {
-
-  // }, m => [(vartb = m(), vartb.disabled = true, vartb)])
+  block("var", true, null, false, false, k => {
+    k.text("VAR")
+  }, (b, f, i, n, s) => b.getFieldValue("VAR") + (s ? " = " + s() : ""))
   block("set", false, "code", "code", false, k => {
     k.field("set")
-    k.input("VAR", "<")
+    k.input("VAR", "Variable")
     k.field("to")
     k.input("VALUE")
   }, (b, f, i, n) => {
-    setCtx++
-    setVal = f("VALUE")
-    try {
-      return ""
-    } finally {
-      setCtx--
+    let t = b.getInputTargetBlock("VAR"), v = f("VALUE")
+    if (!t) {
+      return ``
+    } else if (!forSetBlock[t.type]) {
+      console.log(forSetBlock)
+      throw new Error(`block '${t.type}' connected to Variable input but has no reverse generator`)
+    } else {
+      return forSetBlock[t.type](t, v)
     }
   })
   // block("function", false, false, ["funcarg", "funcbody"], false, k => {
@@ -412,13 +452,16 @@ cat("vars", "Variables", "#ff9d00", (block, foreign) => {
 toolbox.contents.splice(1, 0, ...gcats)
 
 excat("control", toolbox.contents[0], (block) => {
+  // block("for", false, "code", "code", )
   block("ignore", false, "code", "code", false, k => k.input("VALUE", "Ignorable"), (b, f, i, n) => f("VALUE"))
   block("do", false, "code", "code", "code", k => {}, (b, f, i, n) => `do\n  ${i}
 end\n${n}`)
   block("jump", false, "code", false, false, k => {
     k.field("jump")
   }, (b, f, i, n) => "")
-  block("blockarg", true, "Function", "code", false, k => k.field("code"), (b, f, i, n) => `function() ${n} end`)
+  block("blockarg", true, "Function", "code", false, k => k.field("code"), (b, f, i, n) => `function()
+${n}
+end`)
   block("fninvoke_stmt", false, "code", ["arg", "code"], false, k => {
     k.field("run")
     k.input("VALUE", "Function")
@@ -453,7 +496,7 @@ end\n${n}`)
       args.push(luaGenerator.valueToCode(b, "VALUE", 0) || "error('Hole!')")
       nextArg = nextArg.getNextBlock()
     }
-    return `(${f("VALUE") || "error('Hole!')"})(${args})`
+    return `return (${f("VALUE") || "error('Hole!')"})(${args})`
   })
   block("capturecont", false, "code", "code", "code", k => {
     k.field("capture continuation")
