@@ -293,8 +293,12 @@ cat("string", "Text", "#2ad4c8", (block, foreign) => {
   block("_String", true, "String", false, false, b => b.text("VALUE"), (b, f) => JSON.stringify(b.getFieldValue("VALUE") || ""))
   block("print", false, "code", "code", false, b => {
     b.field("print")
-    b.input("VALUE", "String")
-  }, (b, f) => `print(${f("VALUE") || "error('Hole!')"})`)
+    b.input("VALUE")
+  }, (b, f) => `print(${f("VALUE") || "''"})`)
+  block("print2", false, "code", "code", false, b => {
+    b.field("log")
+    b.input("VALUE")
+  }, (b, f) => `log(${f("VALUE") || "''"})`)
   block("concat", true,  "String", false, false, b => {
     b.input("A", "String")
     b.field("followed by")
