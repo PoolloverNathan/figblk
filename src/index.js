@@ -213,7 +213,7 @@ function excat(cid, cat, define) {
     }
     luaGenerator.forBlock[bid] = b => {
       const v2c  = f => luaGenerator.valueToCode(b, f, 0)
-          , body = luaGenerator.statementToCode(b, "BODY")
+          , body = luaGenerator.statementToCode(b, "BODY")?.trim()
           , next = isOut ? "" : /** @type {string} */ (luaGenerator.blockToCode(b.nextConnection?.targetBlock() ?? null))
           , code = codegen(b, v2c, body, next)
       return isOut ? [code, 0] : code
@@ -221,7 +221,7 @@ function excat(cid, cat, define) {
     if (codegen.length >= 5) {
       forSetBlock[bid] = (b, v) => { 
         const v2c  = f => luaGenerator.valueToCode(b, f, 0)
-            , body = luaGenerator.statementToCode(b, "BODY")
+            , body = luaGenerator.statementToCode(b, "BODY")?.trim()
             , next = isOut ? "" : /** @type {string} */ (luaGenerator.blockToCode(b.nextConnection?.targetBlock() ?? null))
         return codegen(b, v2c, body, next, () => v)
       }
