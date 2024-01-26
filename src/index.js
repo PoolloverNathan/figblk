@@ -786,15 +786,16 @@ function decodeIdent(eid) {
 }
 
 cat("vars", "Variables", "#ff9d00", (block, foreign) => {
+  const vok = s => /\p{XID_Start}\p{XID_Continue}*/u.test(s) ? s : null
   block("global", false, false, false, false, k => {
     k.field("declare global")
   //   k.field(new TypeDropdown(), "TYPE")
-    k.field(new Blockly.FieldTextInput("x", name => name && !ws.getTopBlocks().some(v => v.type == "global" && k.getFieldValue("NAME") == v.getFieldValue("NAME"))), "NAME")
+    k.field(new Blockly.FieldTextInput("x", name => vok(name) && !ws.getTopBlocks().some(v => v.type == "global" && k.block.getFieldValue("NAME") == v.getFieldValue("NAME")) ? name : null), "NAME")
   }, (b, f, i, n) => {
     return ""
   })
   block("var", true, null, false, false, k => {
-    k.text("VAR", "x", s => /\p{XID_Start}\p{XID_Continue}*/u.test(s) && s)
+    k.text("VAR", "x", vok)
   }, (b, f, i, n, s) => b.getFieldValue("VAR") + (s ? " = " + s() : ""))
   block("set", false, "code", "code", false, k => {
     k.field("set")
