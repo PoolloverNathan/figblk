@@ -35,7 +35,7 @@ ${theBody(b)}
 end
 ${nb(b)}`
 
-fb["and"] = b => `(${tcb(b, "A") || __} ${fv(b, "OP") } ${tcb(b, "B") || __})`
+fb["and"] = b => [`(${tcb(b, "A") || __} ${fv(b, "OP") } ${tcb(b, "B") || __})`, 0]
 
 fb.literal_stmt = b => fv(b, "CODE") + "\n" + nb(b)
 fb.literal_expr = b => [fv(b, "CODE") + "\n" + nb(b), 0]

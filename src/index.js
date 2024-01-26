@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 /**
  * @license
  * Copyright 2023 Google LLC
@@ -67,7 +67,7 @@ class BlockBuilder {
   }
   /**
    * Adds a dropdown field to the block
-   * @param {string} name The dropdown's name, used when getting its value.
+   *8 @param {string} name The dropdown's name, used when getting its value.
    * @param {Record<string, string>} opts The options to display in the dropdown. The key is the internal value, and the value is the displayed text.
    * @param {{ new(items: Blockly.MenuGenerator): Blockly.FieldDropdown }} [klass] The class to use for creating the field.
    * @returns {Blockly.FieldDropdown}
@@ -124,15 +124,137 @@ class BlockBuilder {
   set inline(inline) {
     this.#inCount = inline ? Infinity : -Infinity
   }
+  /**
+   * @param {(block: Blockly.Block, ev: Blockly.Events.Abstract) => string | null} warnGen 
+   */
+  set warnGen(warnGen) {
+    this.block.setOnChange(ev => {
+      this.block.setWarningText(warnGen(this.block, ev))
+    })
+  }
+  /**
+   * 
+   * @param {IMPLY20[] | Partial<Record<IMPLY20, 0 | 1 | 2>>} obj 
+   */
+  simpleRequireContext(obj) {
+    /// @ts-ignore - the array in obj.map doesn't count as a tuple and Object.entries still isn't key-generic
+    /** @type {[IMPLY20, 0 | 1 | 2][]} */ const dms = Array.isArray(obj) ? obj.map(e => [e, 0]) : Object.entries(obj)
+    const gw = () => dms.map(([imply, req]) => supplyContextWarning(this.block, imply, req)).filter(a => a).join("\n")
+    this.warnGen = gw
+    this.block.setWarningText(gw())
+  }
+}
+
+/** @typedef {"player" | "host" | "tickDelta" | "renderCtx"} IMPLY20 */
+/** @typedef {boolean | null} IMPLIED20 */
+/** @type {(block: Blockly.Block, imply: IMPLY20) => IMPLIED20} */
+let doimply = (block, imply) => null
+/**
+ * 
+ * @param {string} blkid yes
+ * @param {IMPLY20} wimply
+ * @param {IMPLIED20} status
+ */
+function imply20(blkid, wimply, status) {
+  const doimply_ = doimply
+  doimply = (block, imply) => block.type == blkid && wimply == imply ? status : doimply_(block, imply)
+}
+/**
+ * 
+ * @param {Blockly.Block} block
+ * @returns {Generator<Blockly.Block>}
+ */
+function* getSurroundSuppliers(block) {
+  /** @type {Blockly.Block?} */ let nBlock = block
+  while (nBlock = nBlock.getSurroundParent()) {
+    yield nBlock
+  }
+}
+function idk(more) {
+  return `<see https://xkcd.com/2200 - error info: ${more}>`
+}
+/** @type {Record<IMPLY20, [string, string, string, [string, string, string]]>} */
+const impliedNames = {
+  player: [
+    "the player to definitely be loaded",
+    "the player to definitely not be loaded",
+    "the player to potentially be or not be loaded",
+    [
+      "they are definitely loaded",
+      "they are definitely not loaded",
+      "they might or might not be loaded",
+    ]
+  ],
+  host: [
+    "the script to be running on just your computer",
+    "the script to be running on just someone else's computer",
+    "the script to be running on anyone's computer",
+    [
+      "it's running on just someone else's computer",
+      "it's running on just your computer",
+      "it's running on every computer",
+    ]
+  ],
+  renderCtx: [
+    "the script to be within a rendering event",
+    "the script to not be within a rendering event",
+    idk("renderCtx"),
+    [
+      "it isn't",
+      "it is",
+      "I don't know if it is",
+    ]
+  ],
+  tickDelta: [
+    "the script to be within a player rendering event",
+    "the script to not be within a player rendering event",
+    idk("tickDelta"),
+    [
+      "it isn't",
+      "it is",
+      "I don't know if it is",
+    ]
+  ],
+}
+/**
+ * 
+ * @param {Blockly.Block} block 
+ * @param {IMPLY20} imply 
+ * @param {0 | 1 | 2} state
+ * @returns {string | null}
+ */
+function supplyContextWarning(block, imply, state) {
+  const tfn = [true, false, null]
+  const statei = tfn[state]
+  let s, rres = null
+  for (s of getSurroundSuppliers(block)) {
+    const res = doimply(s, imply)
+    console.log("scw", block.type, imply, state, s.type, res)
+    if (res != undefined) {
+      rres = res
+      break
+    }
+  }
+  // skip warning if s has a previous or output
+  if (rres == statei) return null
+  return `This block requires ${impliedNames[imply][state]},\n\u2003but ${impliedNames[imply][3][tfn.indexOf(rres)]}\n\u2003(because of the ${s?.type} block).`
 }
 
 let gcats = []
-const IMPLY_ENTITY = Symbol("IMPLY_ENTITY")
-const IMPLY_HOST   = Symbol("IMPLY_HOST")
 
-/** @typedef {typeof IMPLY_ENTITY | typeof IMPLY_HOST} IMPLIED */
-/** @type {Record<string, Record<IMPLIED, boolean | undefined>>} */
+/** @typedef { "host" | "entity" } IMPLIABLE */
+/** @typedef {{ fits(block: Blockly.Block, check: (name: string) => boolean): boolean, provides(block: Blockly.Block, name: string): boolean }} IMPLICATIONS */
+/** @type {Record<IMPLIABLE, IMPLICATIONS>} */
 let blocks_imply = {}
+const mismatch_ctx = (name, exp, got) => {
+  const namectx = {
+    [true]:      "present",
+    [false]:     "absent",
+    [null]:      "unknown",
+    [undefined]: "unspecified",
+  }
+  return `context '${name}' is ${namectx[got]}, but this block expects it to be ${namectx[exp]}`
+}
 
 /** @type {Map<string, Set<string>>} */
 let implementations = new Map()
@@ -154,7 +276,7 @@ function impls(iface) {
  * @param {string} cid
  * @param {string} name
  * @param {string} color
- * @param {(block: (bid: string, isOut: boolean, type: string | false | string[] | null, nextType: string | false | string[] | null, cType: string | false | string[] | null, build: (k: BlockBuilder) => void, codegen: (b: Blockly.Block, f: (f: any) => string, i: string, n: string) => string) => void, define: (name: string) => void) => void} define
+ * @param {(block: (bid: string, isOut: boolean, type: string | false | string[] | null, nextType: string | false | string[] | null, cType: string | false | string[] | null, build: (k: BlockBuilder) => void, codegen: (b: Blockly.Block, f: (f: any) => string, i: string, n: string, s?: () => string) => string, tbgen?: (m: () => ToolboxBlock) => Iterable<ToolboxBlock>, imply?: IMPLICATIONS) => void, foreign: (name: string) => void) => void} define
  */
 function cat(cid, name, color, define) {
   const cat = /** @type {const} */ ({
@@ -179,9 +301,10 @@ let forSetBlock = {}
 /**
  * @param {string} cid
  * @param {{ kind: "category", contents: {}[] }} cat
- * @param {(block: (bid: string, isOut: boolean, type: string | false | string[] | null, nextType: string | false | string[] | null, cType: string | false | string[] | null, build: (k: BlockBuilder) => void, codegen: (b: Blockly.Block, f: (f: any) => string, i: string, n: string) => string, tbgen?: (m: () => ToolboxBlock) => Iterable<ToolboxBlock>) => void, foreign: (name: string) => void) => void} define
+ * @param {(block: (bid: string, isOut: boolean, type: string | false | string[] | null, nextType: string | false | string[] | null, cType: string | false | string[] | null, build: (k: BlockBuilder) => void, codegen: (b: Blockly.Block, f: (f: any) => string, i: string, n: string, s?: () => string) => string, tbgen?: (m: () => ToolboxBlock) => Iterable<ToolboxBlock>, imply?: IMPLICATIONS) => void, foreign: (name: string) => void) => void} define
  */
 function excat(cid, cat, define) {
+  // const dfltImply = { fits: b => true, provides: () => false }
   /**
    * @param {string} bid
    * @param {boolean} isOut
@@ -189,11 +312,15 @@ function excat(cid, cat, define) {
    * @param {string | false | string[] | null} nextType
    * @param {string | false | string[] | null} cType
    * @param {(k: BlockBuilder) => void} build
-   * @param {(b: Blockly.Block, f: (f: any) => string, i: string, n: string) => string} codegen
+   * @param {(b: Blockly.Block, f: (f: any) => string, i: string, n: string, s?: () => string) => string} codegen
    * @param {(m: () => ToolboxBlock) => Iterable<ToolboxBlock>} [tbgen]
    */
-  function block(bid, isOut, type, nextType, cType, build, codegen = (b, f, i, n) => `error("Code generation for '${bid}' not implemented")\n${n}`, tbgen = m => [m()], /** @type {IMPLIED[]} */ imply = []) {
-    cat.contents.push(...tbgen(() => ({ kind: "block", type: bid })))
+  function block(bid, isOut, type, nextType, cType, build, codegen = (b, f, i, n) => `error("Code generation for '${bid}' not implemented")\n${n}`, tbgen = m => [m()]) {
+    if (typeof tbgen === "object") {
+      let otbgen = tbgen
+      tbgen = m => [m(otbgen)]
+    }
+    cat.contents.push(...tbgen(x => Object.assign({ kind: "block", type: bid }, x)))
     Blockly.Blocks[bid] = {
       /**
        * @this {Blockly.Block}
@@ -202,7 +329,6 @@ function excat(cid, cat, define) {
         this.setStyle(cid)
         if (type     !== false) this[isOut ? "setOutput" : "setPreviousStatement"](true, type)
         if (nextType !== false) this.setNextStatement(true, nextType)
-        let inCount = 0
         // create a builder
         const builder = new BlockBuilder(this)
         build(builder)
@@ -236,19 +362,43 @@ function excat(cid, cat, define) {
   define(block, foreign)
 }
 function nexcat(cid, define) {
-  excat(cid, toolbox.contents.find(c => c.categorystyle === cid + "_category"), define)
+  excat(cid, /** @type {} */ (toolbox.contents.find(c => c.categorystyle === cid + "_category")), define)
 }
 const scat = () => gcats.push({ kind: "sep" })
 
 cat("event", "Events", "#17c40e", block => {
-  function event(desc, id) {
-    block(id == "" ? "onload" : "event_" + id, false, false, false, "code", k => k.field(desc), (b, f, i, n) => `${id == "" ? "do" : `function events.${id}()`}
-${i}
+  /**
+   * 
+   * @param {string} desc 
+   * @param {string} id 
+   * @param {Partial<Record<IMPLY20, IMPLIED20>>} give
+   */
+  function event(desc, id, give = {}) {
+    const bid = id == "" ? "onload" : "event_" + id
+    block(bid, false, false, false, "code", k => k.field(desc), (b, f, i, n) => `${id == "" ? "do" : `function events.${id}()`}
+  ${i}
 end`)
+    for (let [k, v] of Object.entries(give)) {
+      // @ts-ignore - Object.entries isn't generic in its key type
+      imply20(bid, k, v)
+    }
   }
-  event("when avatar is selected", "")
-  event("when player is loaded", "entity_init")
+  event("when avatar is selected", "", { player: false })
+  event("when player is loaded", "entity_init", { player: true })
+  event("when player is updated", "tick", { player: true })
+  event("when world is updated", "world_tick")
 })
+/**
+ * Sets up a block's input to help determine its output, and vice versa.
+ * The initial types are used to determine which types are acceptable to potentially be an input or output type.
+ * @param {Blockly.Block} block The block to set up and register listeners on.
+ * @param {string} inputName The name of the input used for this relationship. An invalid name triggers a runtime error.
+ * @param {(outType: string) => string[]} outTypeToInType A function returning the possible input types  for an output type, for backwards propagation.
+ * @param {(inType:  string) => string[]} inTypeToOutType A function returning the possible output types for an input  type, for forwards  propagation.
+*/
+function idbOutputCheckedBlock(block, inputName, outTypeToInType, inTypeToOutType) {
+  
+}
 // toolbox defs go here
 cat("math", "Math", "#1b5937", (block, foreign) => {
   block("_Number", true, "Number", false, false, b => b.text("VALUE", 0, n => isNaN(n) ? null : Number(n)), (b, f) => b.getFieldValue("VALUE") || 0)
@@ -288,6 +438,37 @@ cat("math", "Math", "#1b5937", (block, foreign) => {
     b.dropdown("OP", mbops)
     b.input("B", "Number")
   }, (b, f) => "(" + b.getFieldValue("OP").replace("%", f("A")).replace("$", f("B")) + ")", { inputs: { A: { shadow: { type: "_Number", fields: { "VALUE": 2 } } }, B: { shadow: { type: "_Number", fields: { "VALUE": 2 } } } } })
+
+  const VECS = ["Number", "Vector2", "Vector3", "Vector4"]
+  const axesn = v => VECS.indexOf(v) + 1
+  const vfaxe = v => VECS[v]
+  block("vec2", true, "Vector2", false, false, y => {
+    y.field("⟨")
+    y.input("X", "Number")
+    y.input("Y", "Number")
+    y.field("⟩")
+  }, (g, d) => `vec(${d("X")}, ${d("Y")})`)
+  block("vec3", true, "Vector3", false, false, y => {
+    y.field("⟨")
+    y.input("X", "Number")
+    y.input("Y", "Number")
+    y.input("Z", "Number")
+    y.field("⟩")
+  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")})`)
+  block("vec4", true, "Vector4", false, false, y => {
+    y.field("⟨")
+    y.input("X", "Number")
+    y.input("Y", "Number")
+    y.input("Z", "Number")
+    y.input("W", "Number")
+    y.field("⟩")
+  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")}, ${d("W")})`)
+  block("vaug", true, VECS.slice(1), false, false, h => {
+    h.input("VECTOR", ...VECS.slice(0, -2))
+    h.field("augmented with")
+    h.input("VALUE", "Number")
+    idbOutputCheckedBlock(h.block, "VECTOR", outType => vfaxe(axesn(outType) - 1), inType => vfaxe(axesn(inType) + 1))
+  }, (y, z) => `(${z}):augment`)
 })
 cat("string", "Text", "#2ad4c8", (block, foreign) => {
   block("_String", true, "String", false, false, b => b.text("VALUE"), (b, f) => JSON.stringify(b.getFieldValue("VALUE") || ""))
@@ -304,7 +485,7 @@ cat("string", "Text", "#2ad4c8", (block, foreign) => {
     b.field("followed by")
     b.input("B", "String")
   }, (b, f) => `(${f("A")} .. ${f("B")})`)
-  foreign("size")
+  // foreign("size")
   block("substr", true, "String", false, false, k => {
     k.field("letters")
     k.input("MIN", "Number")
@@ -327,6 +508,19 @@ cat("host", "Host", "#c7bf1c", (block, foreign) => {
 ${end}${n}`
   })
   foreign("else")
+/*
+  block("slotitem", true, "ItemStack", false, false, k => {
+    k.field("item in")
+    k.input("VALUE", "Number")
+  }, (n, g, b, f) => `host:getSlot(${g("VALUE")})`, { inputs: { VALUE: { shadow: { type: "slot_" } } } })
+  block("slot_", true, "Number", false, false, g => {
+    const d = g.dropdown("")
+    g.dummy()
+    const i = g.input("VALUE")
+  }
+*/
+    
+  //block("")
 })
 cat("world", "World", "#704d30", (block, foreign) => {
   block("isWorld", false, "code", ["else", "code"], "code", k => {
@@ -360,73 +554,136 @@ cat("vanilla_model", "Vanilla Model", "#a18d63", (block, foreign) => {
   block("vanillaModelPart", true, "VanillaPart", false, false, k => {
     k.dropdown("VALUE", {
       PLAYER_:              "Entire Player",
-      INNER_LAYER_:         "  - Inner Skin Layer",
-      HEAD:                 "      - Head",
-      BODY:                 "      - Torso",
-      LEFT_ARM:             "      - Left Arm",
-      RIGHT_ARM:            "      - Right Arm",
-      LEFT_LEG:             "      - Left Leg",
-      RIGHT_LEG:            "      - Right Leg",
-      OUTER_LAYER_:         "  - Outer Skin Layer",
-      HAT:                  "      - Hat",
-      JACKET:               "      - Jacket",
-      LEFT_SLEEVE:          "      - Left Sleeve",
-      RIGHT_SLEEVE:         "      - Right Sleeve",
-      LEFT_PANTS:           "      - Left Pants",
-      RIGHT_PANTS:          "      - Right Pants",
-      CAPE_:                "  - Cape",
-      CAPE_MODEL:           "      - Cape Model",
-      FAKE_CAPE:            "      - Fake Cape",
+      INNER_LAYER_:         "Â  - Inner Skin Layer",
+      HEAD:                 "Â  Â  Â  - Head",
+      BODY:                 "Â  Â  Â  - Torso",
+      LEFT_ARM:             "Â  Â  Â  - Left Arm",
+      RIGHT_ARM:            "Â  Â  Â  - Right Arm",
+      LEFT_LEG:             "Â  Â  Â  - Left Leg",
+      RIGHT_LEG:            "Â  Â  Â  - Right Leg",
+      OUTER_LAYER_:         "Â  - Outer Skin Layer",
+      HAT:                  "Â  Â  Â  - Hat",
+      JACKET:               "Â  Â  Â  - Jacket",
+      LEFT_SLEEVE:          "Â  Â  Â  - Left Sleeve",
+      RIGHT_SLEEVE:         "Â  Â  Â  - Right Sleeve",
+      LEFT_PANTS:           "Â  Â  Â  - Left Pants",
+      RIGHT_PANTS:          "Â  Â  Â  - Right Pants",
+      CAPE_:                "Â  - Cape",
+      CAPE_MODEL:           "Â  Â  Â  - Cape Model",
+      FAKE_CAPE:            "Â  Â  Â  - Fake Cape",
       ARMOR_:               "All Armor",
-      HELMET_:              "  - Helmet",
-      HELMET_ITEM:          "      - Item on Head",
-      HELMET_HEAD:          "      - Helmet Inner",
-      HELMET_HAT:           "      - Helmet Hat",
-      CHESTPLATE_:          "  - Chestplate",
-      CHESTPLATE_BODY:      "      - Chestplate Body",
-      CHESTPLATE_LEFT_ARM:  "      - Chestplate Left Shoulder",
-      CHESTPLATE_RIGHT_ARM: "      - Chestplate Right Shoulder",
-      LEGGINGS_:            "  - Leggings",
-      LEGGINGS_BODY:        "      - Leggings Hips",
-      LEGGINGS_LEFT_LEG:    "      - Left Legging",
-      LEGGINGS_RIGHT_LEG:   "      - Right Legging",
-      BOOTS_:               "  - Boots",
-      BOOTS_LEFT_LEG:       "      - Left Boot",
-      BOOTS_RIGHT_LEG:      "      - Right Boot",
+      HELMET_:              "Â  - Helmet",
+      HELMET_ITEM:          "Â  Â  Â  - Item on Head",
+      HELMET_HEAD:          "Â  Â  Â  - Helmet Inner",
+      HELMET_HAT:           "Â  Â  Â  - Helmet Hat",
+      CHESTPLATE_:          "Â  - Chestplate",
+      CHESTPLATE_BODY:      "Â  Â  Â  - Chestplate Body",
+      CHESTPLATE_LEFT_ARM:  "Â  Â  Â  - Chestplate Left Shoulder",
+      CHESTPLATE_RIGHT_ARM: "Â  Â  Â  - Chestplate Right Shoulder",
+      LEGGINGS_:            "Â  - Leggings",
+      LEGGINGS_BODY:        "Â  Â  Â  - Leggings Hips",
+      LEGGINGS_LEFT_LEG:    "Â  Â  Â  - Left Legging",
+      LEGGINGS_RIGHT_LEG:   "Â  Â  Â  - Right Legging",
+      BOOTS_:               "Â  - Boots",
+      BOOTS_LEFT_LEG:       "Â  Â  Â  - Left Boot",
+      BOOTS_RIGHT_LEG:      "Â  Â  Â  - Right Boot",
       ELYTRA_:              "Elytra",
-      LEFT_ELYTRA:          "  - Elytra Left Wing",
-      RIGHT_ELYTRA:         "  - Elytra Right Wing",
+      LEFT_ELYTRA:          "Â  - Elytra Left Wing",
+      RIGHT_ELYTRA:         "Â  - Elytra Right Wing",
       HELD_ITEMS_:          "Held Items",
-      LEFT_ITEM:            "  - Left-hand Item",
-      RIGHT_ITEM:           "  - Right-hand Item",
+      LEFT_ITEM:            "Â  - Left-hand Item",
+      RIGHT_ITEM:           "Â  - Right-hand Item",
       PARROTS_:             "Parrots",
-      LEFT_PARROT:          "  - Left Parrot",
-      RIGHT_PARROT:         "  - Right Parrot",
+      LEFT_PARROT:          "Â  - Left Parrot",
+      RIGHT_PARROT:         "Â  - Right Parrot",
       ALL_:                 "All of the above",
     }, class extends Blockly.FieldDropdown {
       getText() {
-        return super.getText().replace(/^(?:    )?  - /, "")
+        return super.getText().replace(/^(?:Â  Â  )?Â  - /, "")
       }
     })
   }, b => "(vanilla_model." + b.getFieldValue("VALUE").replace(/_$/, "") + ")")
 })
 class PlayerRequiredIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
   /**
    * @param {Blockly.Block} k
    */
   constructor(k) {
     super(k)
-    this.setTooltip("This block can only be used in certain events, or within a 'if current player is loaded' block.")
+    this.setTooltip("This block requires the current player to be loaded, meaning it can only be used in certain events or within an 'if current player is loaded' block.")
   }
+}
+class PlayerPresentIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
+  /**
+   * @param {Blockly.Block} k
+   */
+  constructor(k) {
+    super(k)
+    this.setTooltip("This block guarantees that the current player .")
+  }
+}
+class PlayerAbsentIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
+  /**
+   * @param {Blockly.Block} k
+   */
+  constructor(k) {
+    super(k)
+    this.setTooltip("This block guaranteesn't that the current player .")
+  }
+}
+class HostRequiredIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
+  /**
+   * @param {Blockly.Block} k
+   */
+  constructor(k) {
+    super(k)
+    this.setTooltip("This block requires information only available from your computer, meaning it can only be used in certain events or within an 'if running on host' block.")
+  }
+}
+class HostPresentIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
+  /**
+   * @param {Blockly.Block} k
+   */
+  constructor(k) {
+    super(k)
+    this.setTooltip("This block guarantees that the avatar code is running on you .")
+  }
+}
+class HostAbsentIcon extends Blockly.icons.Icon {
+  static TYPE = new Blockly.icons.IconType(this.constructor.name)
+  getType() { return this.constructor.TYPE }
+  /**
+   * @param {Blockly.Block} k
+   */
+  constructor(k) {
+    super(k)
+    this.setTooltip("This block guaranteesn't that the avatar code is running on you .")
+  }
+}
+const YEARN = {
+  player: [PlayerAbsentIcon, PlayerPresentIcon, PlayerRequiredIcon],
+  host:   [HostAbsentIcon,   HostPresentIcon,   HostRequiredIcon],
 }
 cat("entities", "Entities", "#19966e", block => {
   const ALL_ENTITIES = ["Entity", "Player", "Viewer"]
-  // block("player", true, "Player", false, false, k => {
+  block("player", true, "Player", false, false, k => {
   //   k.block.addIcon(new PlayerRequiredIcon(k.block))
-  //   k.field("current player")
-  // })
+    k.field("current player")
+    k.simpleRequireContext(["player"])
+  }, (x, y, z, w) => `player`)
   block("isPlayer", false, "code", ["else", "code"], "code", k => {
     k.field("if current player is ready")
+    k.simpleRequireContext({ player: 2 })
   }, (g, f, b, n) => {
     const end = g.getNextBlock()?.type === "else" ? "" : "end\n"
     // generate similar to if
@@ -434,6 +691,7 @@ cat("entities", "Entities", "#19966e", block => {
   ${b}
 ${end}${n}`
   })
+  imply20("isPlayer", "player", true)
 })
 scat()
 let vartb
@@ -480,13 +738,16 @@ cat("vars", "Variables", "#ff9d00", (block, foreign) => {
     k.input("VAR", "Variable")
     k.field("to")
     k.input("VALUE")
+    k.block.setOnChange(() => {
+      
+    })
   }, (b, f, i, n) => {
     let t = b.getInputTargetBlock("VAR"), v = f("VALUE")
     if (!t) {
       return ``
     } else if (!forSetBlock[t.type]) {
       console.log(forSetBlock)
-      throw new Error(`block '${t.type}' connected to Variable input but has no reverse generator`)
+      return `error("block '${t.type}' connected to Variable input (${b.id}) but has no reverse generator")`
     } else {
       return forSetBlock[t.type](t, v)
     }
@@ -496,7 +757,7 @@ cat("vars", "Variables", "#ff9d00", (block, foreign) => {
   //   k.text("NAME")
   // })
   // block("funcarg", false, ["funcarg"], ["funcarg", "funcbody"], false, k => {
-  //   k.field("←")
+  //   k.field("â")
   //   k.text("NAME")
   // })
   // block("funcvar", false, )
@@ -513,7 +774,7 @@ end\n${n}`)
     k.field("jump")
   }, (b, f, i, n) => "")
   block("blockarg", true, "Function", "code", false, k => k.field("code"), (b, f, i, n) => `function()
-${n}
+  ${n}
 end`)
   block("fninvoke_stmt", false, "code", ["arg", "code"], false, k => {
     k.field("run")
@@ -553,7 +814,10 @@ end`)
   })
   block("capturecont", false, "code", "code", "code", k => {
     k.field("capture continuation")
-  }, (b, f, i, n) => `local function __figblk_ccont() ${n} end ${i}`)
+  }, (b, f, i, n) => `local function __figblk_ccont()
+  ${n.replace(/^/, "  ").trim()}
+end
+${i.replace(/^  /, "").trim()}`)
   block("getcont", true, "Function", false, false, k => {
     k.field("captured continuation")
   }, () => "(__figblk_ccont)")
@@ -562,18 +826,19 @@ end`)
     k.input("VALUE")
   }, (b, f, i, n) => `local __figblk_switch = ${f("VALUE") || "error('Hole!')"}
 do
-${i.replace(/^(\s+)else/, "$1").trimEnd().replace(/(?<=.)$/, "\n  end")}
-end`)
+  ${i.replace(/^(\s+)else/, "$1").trimEnd().replace(/(?<=.)$/, "\n  end")}
+end
+${n}`)
   block("switchcase", false, "switch", "switch", "code", k => {
     k.field("if it equals")
     k.input("VALUE")
   }, (b, f, i, n) => `elseif __figblk_switch == ${f("VALUE") || "error('Hole!')"} then
-${i}
+  ${i}
 ${n}`)
   block("switchelse", false, "switch", false, "code", k => {
     k.field("otherwise")
   }, (b, f, i) => `else
-${i}`)
+  ${i}`)
 })
 nexcat("advanced", block => {
   block("tf", true, null, null, false, k => {
@@ -614,6 +879,7 @@ const blocklyDiv = document.getElementById('blocklyDiv');
 const ws = Blockly.inject(blocklyDiv, {
   toolbox,
   sounds: false,
+  renderer: "thrasos",
 });
 
 // const shapeFor_ = ws.getRenderer().shapeFor
@@ -645,9 +911,6 @@ const runCode = () => {
 
   // eval(code);
 };
-
-export const knownEntity = {}
-export const knownHost   = {}
 
 // Load the initial state from storage and run the code.
 load(ws);
