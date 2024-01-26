@@ -128,9 +128,13 @@ class BlockBuilder {
    * @param {(block: Blockly.Block, ev: Blockly.Events.Abstract) => string | null} warnGen 
    */
   set warnGen(warnGen) {
-    this.block.setOnChange(ev => {
+    this.addChange(ev => {
       this.block.setWarningText(warnGen(this.block, ev))
     })
+  }
+  addChange(/** @type {(ev: Blockly.Events.Abstract) => void} */fn) {
+    const o = this.block.onchange ?? (() => {})
+    this.block.onchange = ev => (o(ev), fn(ev))
   }
   /**
    * 
