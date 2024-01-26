@@ -67,7 +67,7 @@ class BlockBuilder {
   }
   /**
    * Adds a dropdown field to the block
-   *8 @param {string} name The dropdown's name, used when getting its value.
+   * @param {string} name The dropdown's name, used when getting its value.
    * @param {Record<string, string>} opts The options to display in the dropdown. The key is the internal value, and the value is the displayed text.
    * @param {{ new(items: Blockly.MenuGenerator): Blockly.FieldDropdown }} [klass] The class to use for creating the field.
    * @returns {Blockly.FieldDropdown}
