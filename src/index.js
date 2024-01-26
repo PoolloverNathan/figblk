@@ -53,21 +53,31 @@ class BlockBuilder {
     this.#fieldQueue.push([f, name ?? void name])
   }
   /**
-   * @param {string} name
-   * @param {string} [text]
+   * Adds a text field to the block.
+   * @param {string} name The text field's name, used when getting its value.
+   * @param {string} [text] The field's text, by default an empty string.
+   * @param {(value: string) => string | null | undefined} [vali] A validator for the field. By default, any value is accepted.
+   * @param {{ new(text?: string, vali?: (value: string) => string | null | undefined): Blockly.FieldTextInput }} [klass] The class to use for creating the field.
+   * @returns {Blockly.FieldTextInput} A reference to the field.
   */
-  text(name, text, klass = Blockly.FieldTextInput) {
-    this.field(new klass(text), name)
+  text(name, text, vali, klass = Blockly.FieldTextInput) {
+    const o = new klass(text, vali)
+    this.field(o, name)
+    return o
   }
   /**
    * Adds a dropdown field to the block
    * @param {string} name The dropdown's name, used when getting its value.
    * @param {Record<string, string>} opts The options to display in the dropdown. The key is the internal value, and the value is the displayed text.
+   * @param {{ new(items: Blockly.MenuGenerator): Blockly.FieldDropdown }} [klass] The class to use for creating the field.
+   * @returns {Blockly.FieldDropdown}
    */
   dropdown(name, opts, klass = Blockly.FieldDropdown) {
     const entries = Object.entries(opts)
     for (let entry of entries) entry.reverse() // because the options are specified as [text, value][]
-    this.field(new klass(entries), name)
+    const o = new klass(entries)
+    this.field(o, name)
+    return o
   }
   /**
    * @param {Blockly.Input} input
