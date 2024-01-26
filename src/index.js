@@ -402,6 +402,12 @@ end`)
   event("when player is loaded", "entity_init", { player: true })
   event("when player is updated", "tick", { player: true })
   event("when world is updated", "world_tick")
+  event("when player is rendered", "tick", { player: true, tickDelta: true })
+  event("when world is rendered", "world_tick", { tickDelta: true })
+  block("render_delta", true, "Number", false, false, k => {
+    k.field("tick delta")
+    k.simpleRequireContext(["tickDelta"])
+  }, () => "__figblk_rdelta")
 })
 /**
  * Sets up a block's input to help determine its output, and vice versa.
