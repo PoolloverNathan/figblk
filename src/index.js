@@ -184,7 +184,9 @@ function* getSurroundSuppliers(block) {
   }
 }
 function idk(more) {
-  return `<see https://xkcd.com/2200 - error info: ${more}>`
+  //return `<see https://xkcd.com/2200 - error info: ${more}>`
+  //return `<this should never happen (${more})>`
+  return more + " (see https://xkcd.com/2200)"
 }
 /** @type {Record<IMPLY20, [string, string, string, [string, string, string]]>} */
 const impliedNames = {
@@ -209,23 +211,23 @@ const impliedNames = {
     ]
   ],
   renderCtx: [
-    "the script to be within a rendering event",
-    "the script to not be within a rendering event",
-    idk("renderCtx"),
+    "the script to be within a player rendering event",
+    "the script to not be within a player rendering event",
+    idk("the script to simultaneously be and not be in a player rendering event"),
     [
-      "it isn't",
+      "it's within a different type of event",
       "it is",
-      "I don't know if it is",
+      "it's not within any event",
     ]
   ],
   tickDelta: [
-    "the script to be within a player rendering event",
-    "the script to not be within a player rendering event",
-    idk("tickDelta"),
+    "the script to be within a player or world rendering event",
+    "the script to not be within a player or world rendering event",
+    idk("the script to simultaneously be and not be in a player rendering event"),
     [
-      "it isn't",
+      "it's within a different type of event",
       "it is",
-      "I don't know if it is",
+      "it's not within any event",
     ]
   ],
 }
