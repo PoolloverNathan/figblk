@@ -427,6 +427,15 @@ end`)
 function idbOutputCheckedBlock(block, inputName, outTypeToInType, inTypeToOutType) {
   block.setWarningText("This block is generic, which is currently unimplenebted.")
 }
+baddimply("else", (b, a, d) => {
+  const p = b.getParent()
+  if (p) {
+    let i = doimply(p, a)
+    return i == null ? i : !i
+  } else {
+    return null
+  }
+})
 // toolbox defs go here
 cat("math", "Math", "#1b5937", (block, foreign) => {
   block("_Number", true, "Number", false, false, b => b.text("VALUE", 0, n => isNaN(n) ? null : Number(n)), (b, f) => b.getFieldValue("VALUE") || 0)
