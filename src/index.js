@@ -741,16 +741,52 @@ class TypeDropdown extends TypedDropdown {
     return this.getValue() || ""
   }
 }
+/**
+ * @interface Blockly.Block
+ * @prop {Record<string, string[]>} [scopedVars_]
+*/
+function* getVariableOwners(s) {
+  let oldvs = {}
+  while (s = s.getParent()) {
+    if (s.scopedVars_) {
+      for (let [v, ck] of s.scopedVars_) {
+        if (!oldvs[v]) {
+          if (ck && ck[0]) {
+            const imp = implementations.get(ck[0])
+            if (imp) ck = imp
+          }
+          yield oldvs[v] = [v, ck, s]
+        }
+      }
+    }
+  }
+}
+function encodeIdent(id) {
+	let eid = ""
+	for (let c of id) {
+  	// per [MDN], `c` is the individual code points of the string
+    // [MDN]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/@@iterator
+    // encode via adding an underscore then the hex codepoint
+    eid += "_" + c.codePointAt().toString(16)
+  }
+  return eid
+}
+function decodeIdent(eid) {
+	const [empty, ...parts] = eid.split("_")
+  if (empty) throw new Error("decoded idents must start with _")
+  return parts.map(n => parseInt(n, 16)).map(n => String.fromCodePoint(n)).join("")
+}
+
 cat("vars", "Variables", "#ff9d00", (block, foreign) => {
-  // block("global", false, false, false, false, k => {
-  //   k.field("declare global")
+  block("global", false, false, false, false, k => {
+    k.field("declare global")
   //   k.field(new TypeDropdown(), "TYPE")
-  //   k.field(new Blockly.FieldTextInput("x"), "NAME")
-  // }, (b, f, i, n) => {
-  //   return ""
-  // })
+    k.field(new Blockly.FieldTextInput("x", name => name && !ws.getTopBlocks().some(v => v.type == "global" && k.getFieldValue("NAME") == v.getFieldValue("NAME"))), "NAME")
+  }, (b, f, i, n) => {
+    return ""
+  })
   block("var", true, null, false, false, k => {
-    k.text("VAR")
+    k.text("VAR", "x", s => /\p{XID_Start}\p{XID_Continue}*/u.test(s) && s)
   }, (b, f, i, n, s) => b.getFieldValue("VAR") + (s ? " = " + s() : ""))
   block("set", false, "code", "code", false, k => {
     k.field("set")
