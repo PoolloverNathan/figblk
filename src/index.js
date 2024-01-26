@@ -513,6 +513,7 @@ scat()
 cat("host", "Host", "#c7bf1c", (block, foreign) => {
   block("isHost", false, "code", ["else", "code"], "code", k => {
     k.field("if running on host")
+    k.simpleRequireContext({ host: 2 })
   }, (g, f, b, n) => {
     const end = g.getNextBlock()?.type === "else" ? "" : "end\n"
     // generate similar to if
@@ -520,7 +521,12 @@ cat("host", "Host", "#c7bf1c", (block, foreign) => {
   ${b}
 ${end}${n}`
   })
+  imply20("isHost", "host", true)
   foreign("else")
+  block("example host block", false, "code", "code", false, k => {
+    k.field("requires host")
+    k.simpleRequireContext("host")
+  }, (g, b, f, n) => n)
 /*
   block("slotitem", true, "ItemStack", false, false, k => {
     k.field("item in")
