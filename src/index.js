@@ -581,7 +581,7 @@ ${end}${n}`
 })
 cat("model", "Models", "#b214a2", (block, foreign) => {
   foreign("set")
-  block("visibility", true, ["Variable", "Boolean"], false, false, k => {
+  block("visibility", true, ["Variable", "Boolean", ">Boolean"], false, false, k => {
     k.field("is")
     k.input("VALUE", "VanillaPart", "ModelPart")
     k.field("visible?")
@@ -804,24 +804,40 @@ function decodeIdent(eid) {
 }
 
 cat("vars", "Variables", "#ff9d00", (block, foreign) => {
-  const vok = s => /\p{XID_Start}\p{XID_Continue}*/u.test(s) ? s : null
+  const vok = (/** @type {string} */ s) => /\p{XID_Start}\p{XID_Continue}*/u.test(s) ? s : null
   block("global", false, false, false, false, k => {
     k.field("declare global")
   //   k.field(new TypeDropdown(), "TYPE")
-    k.field(new Blockly.FieldTextInput("x", name => vok(name) && !ws.getTopBlocks().some(v => v.type == "global" && k.block.getFieldValue("NAME") == v.getFieldValue("NAME")) ? name : null), "NAME")
-  }, (b, f, i, n) => {
-    return ""
-  })
+    const name = new Blockly.FieldTextInput("x", name => vok(name) && !ws.getTopBlocks().some(v => v.type == "global" && name == v.getFieldValue("NAME")) ? name : null)
+    k.field(name, "NAME")
+    const vi = k.input("VALUE")
+    k.addChange(() => k.block.scopedVars_ = { [name.getValue() || "_"]: vi })
+  }, (b, f, i, n) => `local ${b.getFieldValue("NAME")} = ${f("VALUE")}`)
   block("var", true, null, false, false, k => {
     k.text("VAR", "x", vok)
   }, (b, f, i, n, s) => b.getFieldValue("VAR") + (s ? " = " + s() : ""))
   block("set", false, "code", "code", false, k => {
     k.field("set")
-    k.input("VAR", "Variable")
+    const varInput = k.input("VAR", "Variable")
     k.field("to")
-    k.input("VALUE")
-    k.block.setOnChange(() => {
-      
+    const valInput = k.input("VALUE")
+    k.addChange(ev => {
+      // we only enforce slottiness if both var and value are slotted
+      const varTarg = varInput.connection?.targetConnection
+      const valTarg = valInput.connection?.targetConnection
+      if (varTarg && valTarg) {
+        const varCheck = varTarg.getCheck()
+        const valCheck = valTarg.getCheck()
+        if (varCheck && valCheck && !varCheck.includes(">")) {
+          // we're assigning a picky value to a picky variable. prefer unslotting the value.
+          for (let valType of valCheck) {
+            if (!varCheck.includes(">" + valType)) {
+              valTarg.disconnect()
+              return
+            }
+          }
+        }
+      }
     })
   }, (b, f, i, n) => {
     let t = b.getInputTargetBlock("VAR"), v = f("VALUE")
