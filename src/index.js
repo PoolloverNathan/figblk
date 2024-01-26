@@ -512,11 +512,13 @@ cat("string", "Text", "#2ad4c8", (block, foreign) => {
   block("print", false, "code", "code", false, b => {
     b.field("print")
     b.input("VALUE")
-  }, (b, f) => `print(${f("VALUE") || "''"})`)
+  }, (b, f, i, n) => `print(${f("VALUE") || "''"})
+${n}`)
   block("print2", false, "code", "code", false, b => {
     b.field("log")
     b.input("VALUE")
-  }, (b, f) => `log(${f("VALUE") || "''"})`)
+  }, (b, f) => `log(${f("VALUE") || "''"})
+${n}`)
   block("concat", true,  "String", false, false, b => {
     b.input("A", "String")
     b.field("followed by")
