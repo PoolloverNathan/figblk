@@ -173,8 +173,11 @@ let doimply = (block, imply) => null
  * @param {IMPLIED20} status
  */
 function imply20(blkid, wimply, status) {
+  baddimply(blkid, (block, imply, doimply_) => wimply == imply ? status : doimply_(block, imply))
+}
+function baddimply(blkid, fn) {
   const doimply_ = doimply
-  doimply = (block, imply) => block.type == blkid && wimply == imply ? status : doimply_(block, imply)
+  doimply = (block, imply) => block.type == blkid ? fn(block, imply, doimply_) : doimply_(block, imply)
 }
 /**
  * 
