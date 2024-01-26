@@ -412,7 +412,7 @@ end`)
  * @param {(inType:  string) => string[]} inTypeToOutType A function returning the possible output types for an input  type, for forwards  propagation.
 */
 function idbOutputCheckedBlock(block, inputName, outTypeToInType, inTypeToOutType) {
-  
+  block.setWarningText("This block is generic, which is currently unimplenebted.")
 }
 // toolbox defs go here
 cat("math", "Math", "#1b5937", (block, foreign) => {
