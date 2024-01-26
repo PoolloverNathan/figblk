@@ -551,7 +551,7 @@ ${end}${n}`
   foreign("else")
   block("example host block", false, "code", "code", false, k => {
     k.field("requires host")
-    k.simpleRequireContext("host")
+    k.simpleRequireContext(["host"])
   }, (g, b, f, n) => n)
 /*
   block("slotitem", true, "ItemStack", false, false, k => {
@@ -585,7 +585,7 @@ cat("model", "Models", "#b214a2", (block, foreign) => {
     k.field("is")
     k.input("VALUE", "VanillaPart", "ModelPart")
     k.field("visible?")
-  }, (b, f, i, n, s) => `${f("VALUE") || "error('Hole!')"}:${s ? `setVisible(${s()})` : "isVisible()"}\n`)
+  }, (b, f, i, n, s) => `${f("VALUE") || "error('Hole!')"}:${s ? `setVisible(${s()})` : "isVisible()"}`)
   // block("visibility=", false, "code", "code", false, k => {
   //   k.field("set visibility of")
   //   k.input("PART", "VanillaPart", "ModelPart")
@@ -775,7 +775,7 @@ function* getVariableOwners(s) {
   let oldvs = {}
   while (s = s.getParent()) {
     if (s.scopedVars_) {
-      for (let [v, ck] of s.scopedVars_) {
+      for (let [v, ck] of Object.entries(s.scopedVars_)) {
         if (!oldvs[v]) {
           if (ck && ck[0]) {
             const imp = implementations.get(ck[0])
