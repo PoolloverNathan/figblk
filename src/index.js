@@ -145,6 +145,19 @@ class BlockBuilder {
   }
 }
 
+/**
+ * @param {[inputs: string | string[], block: string, fields: Record<string, string>?][]} on
+*/
+function shad(...on) {
+  const i = {}
+  for (let [is, bs, fs = {}] of on) {
+    for (let ii of is) {
+      i[ii] = { shadow: { type: bs, fields: fs } }
+    }
+  }
+  return { inputs: i }
+}
+
 /** @typedef {"player" | "host" | "tickDelta" | "renderCtx"} IMPLY20 */
 /** @typedef {boolean | null} IMPLIED20 */
 /** @type {(block: Blockly.Block, imply: IMPLY20) => IMPLIED20} */
@@ -447,14 +460,14 @@ cat("math", "Math", "#1b5937", (block, foreign) => {
     y.input("X", "Number")
     y.input("Y", "Number")
     y.field("⟩")
-  }, (g, d) => `vec(${d("X")}, ${d("Y")})`)
+  }, (g, d) => `vec(${d("X")}, ${d("Y")})`, shad(["XY", "_Number"]))
   block("vec3", true, "Vector3", false, false, y => {
     y.field("⟨")
     y.input("X", "Number")
     y.input("Y", "Number")
     y.input("Z", "Number")
     y.field("⟩")
-  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")})`)
+  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")})`, shad(["XYZ", "_Number"]))
   block("vec4", true, "Vector4", false, false, y => {
     y.field("⟨")
     y.input("X", "Number")
@@ -462,7 +475,7 @@ cat("math", "Math", "#1b5937", (block, foreign) => {
     y.input("Z", "Number")
     y.input("W", "Number")
     y.field("⟩")
-  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")}, ${d("W")})`)
+  }, (g, d) => `vec(${d("X")}, ${d("Y")}, ${d("Z")}, ${d("W")})`, shad(["XYZW", "_Number"]))
   block("vaug", true, VECS.slice(1), false, false, h => {
     h.input("VECTOR", ...VECS.slice(0, -2))
     h.field("augmented with")
