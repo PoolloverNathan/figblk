@@ -240,6 +240,45 @@ end`)
   event("when player is loaded", "entity_init")
 })
 // toolbox defs go here
+cat("math", "Math", "#1b5937", (block, foreign) => {
+  block("_Number", true, "Number", false, false, b => b.text("VALUE", 0, n => isNaN(n) ? null : Number(n)), (b, f) => b.getFieldValue("VALUE") || 0)
+  block("percent", true, "Number", false, false, b => b.text("VALUE", 0, n => isNaN(n) ? null : Number(n), class extends Blockly.FieldTextInput { getText() { return super.getText() + "%" } }), (b, f) => b.getFieldValue("VALUE") / 100 || 0)
+  let mcons = {
+    "math.pi": "π",
+    "(math.pi*2)": "τ",
+    "math.huge": "∞",
+    "(-math.huge)": "-∞",
+  }
+  block("mcon", true, "Number", false, false, b => b.dropdown("VALUE", mcons), (b, f) => b.getFieldValue("VALUE") /* , m => Object.keys(mcons).map(k => m({ fields: { VALUE: k } })) */)
+  let mbops = {
+    "% + $": "+",
+    "% - $": "-",
+    "% * $": "×",
+    "% / $": "÷",
+    "% ^ $": "to the power of",
+  }
+  block("mbop", true, "Number", false, false, b => {
+    b.input("A", "Number")
+    /* b.dropdown("OP", mbops, class extends Blockly.FieldDropdown {
+      getText() {
+        return super.getText().replace(/^th /, or => {
+          const b2 = b.block.getInputTargetBlock("A")
+          if (b2?.type == "_Number") {
+            const fv = b2.getFieldValue("VALUE") % 10
+            switch (fv) {
+              case 1:  return "st "
+              case 2:  return "nd "
+              case 3:  return "rd "
+            }
+          }
+          return or
+        })
+      }
+    })*/
+    b.dropdown("OP", mbops)
+    b.input("B", "Number")
+  }, (b, f) => "(" + b.getFieldValue("OP").replace("%", f("A")).replace("$", f("B")) + ")", { inputs: { A: { shadow: { type: "_Number", fields: { "VALUE": 2 } } }, B: { shadow: { type: "_Number", fields: { "VALUE": 2 } } } } })
+})
 cat("string", "Text", "#2ad4c8", (block, foreign) => {
   block("_String", true, "String", false, false, b => b.text("VALUE"), (b, f) => JSON.stringify(b.getFieldValue("VALUE") || ""))
   block("print", false, "code", "code", false, b => {
