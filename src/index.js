@@ -150,7 +150,7 @@ class BlockBuilder {
 }
 
 /**
- * @param {[inputs: string | string[], block: string, fields: Record<string, string>?][]} on
+ * @param {[inputs: string | string[], block: string, fields?: Record<string, string>][]} on
 */
 function shad(...on) {
   const i = {}
@@ -517,7 +517,7 @@ ${n}`)
   block("print2", false, "code", "code", false, b => {
     b.field("log")
     b.input("VALUE")
-  }, (b, f) => `log(${f("VALUE") || "''"})
+  }, (b, f, i, n) => `log(${f("VALUE") || "''"})
 ${n}`)
   block("concat", true,  "String", false, false, b => {
     b.input("A", "String")
