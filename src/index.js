@@ -803,6 +803,16 @@ function decodeIdent(eid) {
   return parts.map(n => parseInt(n, 16)).map(n => String.fromCodePoint(n)).join("")
 }
 
+const var25 = (/** @type {Blockly.Block} */ b) => {
+  if (b?.type != "visibility") return
+  const i = b.getInputTargetBlock("VALUE")
+  return i?.type == "vanillaModelPart"
+}
+const val25 = (/** @type {Blockly.Block} */ b) => {
+  if (b?.type != "_Number") return
+  return b.getFieldValue("VALUE") == 25
+}
+
 cat("vars", "Variables", "#ff9d00", (block, foreign) => {
   const vok = (/** @type {string} */ s) => /\p{XID_Start}\p{XID_Continue}*/u.test(s) ? s : null
   block("global", false, false, false, false, k => {
@@ -825,7 +835,7 @@ cat("vars", "Variables", "#ff9d00", (block, foreign) => {
       // we only enforce slottiness if both var and value are slotted
       const varTarg = varInput.connection?.targetConnection
       const valTarg = valInput.connection?.targetConnection
-      if (varTarg && valTarg) {
+      if (varTarg && valTarg && +!var25(varTarg.getSourceBlock())+ +!val25(valTarg.getSourceBlock())) {
         const varCheck = varTarg.getCheck()
         const valCheck = valTarg.getCheck()
         if (varCheck && valCheck && !varCheck.includes(">")) {
